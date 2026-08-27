@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WORLDLINE WAR</title>
+<style>
+body{margin:0;background:linear-gradient(135deg,#0c111b,#182331);color:#eee;font-family:system-ui,sans-serif;transition:background .35s ease}body.turnMe{background:linear-gradient(135deg,#081a38,#0d315d)}body.turnOpp{background:linear-gradient(135deg,#3a0b12,#661a24)}button,input,select{font:inherit}
+header{position:sticky;top:0;z-index:20;padding:12px 18px;background:#181d27;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 12px #0006}
+main{display:grid;grid-template-columns:1fr 330px;gap:12px;padding:12px;max-width:1300px;margin:auto}
+#board{background:#d7d1c5;padding:10px;border-radius:12px;color:#111}.grid{display:grid;grid-template-columns:80px repeat(3,1fr);gap:5px}.cell{min-height:90px;background:#f4efe6;border:2px solid #aaa;border-radius:8px;padding:5px;position:relative}.label{font-weight:700;display:flex;align-items:center;justify-content:center}.unit{background:#fff;border:1px solid #444;border-radius:7px;padding:5px;margin:2px;font-size:12px;cursor:pointer}.mine{background:#222;color:#fff;font-size:10px}.my{outline:2px solid #3ba7ff}.opp{outline:2px solid #ff5b62}.base{background:#333;color:#fff;border-radius:8px;padding:10px;text-align:center}.hand{display:flex;flex-wrap:wrap;gap:6px;max-height:250px;overflow:auto}.card{background:#f8f8f8;color:#111;border-radius:10px;padding:9px;width:145px;cursor:pointer;border:3px solid transparent;box-shadow:0 4px 10px #0005}.card.selected{border-color:#ffd43b;transform:translateY(-4px)}.card:hover{border-color:#3ba7ff}.small{font-size:12px;color:#bbb}.turnBanner{margin:8px 0;padding:10px 14px;border-radius:10px;font-weight:900;text-align:center;background:#111722;border:1px solid #394454}.turnBanner.myTurn{background:#0d3b26;border-color:#39c77b}.turnBanner.oppTurn{background:#4b1720;border-color:#e45b69}.panel{background:#181d27;border-radius:12px;padding:12px}.log{height:300px;overflow:auto;background:#0b0d12;padding:8px;border-radius:8px;font-size:12px}.top{display:flex;gap:8px;flex-wrap:wrap}.hidden{display:none}.stickybar{position:sticky;bottom:0;z-index:15;margin-top:10px;padding:10px;background:#111722;border:1px solid #394454;border-radius:12px;box-shadow:0 -4px 18px #0008}.resourceMeter{font-weight:800}.ready{color:#6ee7a0}.used{color:#ff9c9c}.zoneNote{font-size:11px;color:#aaa}
+</style>
+</head>
+<body>
+<header><b>🌍 WORLDLINE WAR</b><span id=status>接続中…</span></header>
+<main>
+<section>
+<div id=lobby class=panel>
+<h2>オンライン対戦</h2>
+<select id=faction><option value=modern>🇺🇳 近代王国</option><option value=lonely>👑 孤独王国</option><option value=cyber>🤖 サイバー連邦</option></select>
+<button onclick=createRoom()>ルームを作る</button>
+<hr><input id=code placeholder="ルームコード"><button onclick=joinRoom()>参加</button>
+<p class=small>2人対戦。作成者がコードを相手に共有してください。</p>
+</div>
+<div id=game class=hidden>
+<div class=top id=info></div><div id=turnBanner class="turnBanner"></div><div id=board></div>
+<h3>🃏 手札 <span class=small>（クリックで選択）</span></h3><div class=hand id=hand></div><p id=hint class=small>兵を出す：カード選択 → 左/中央/右レーンの1マス目をクリック。資源化：カード選択 →「資源化」。</p>
+<div class="stickybar"><div id=actionInfo class="top"></div><div class=top><button onclick=resource()>選択カードを資源化</button><button onclick=passTurn()>ターン終了</button></div></div>
+</div>
+</section>
+<aside class=panel><h3>戦闘ログ</h3><div id=log class=log></div><p class=small>カードをクリックすると選択。兵をクリックすると進軍。配置はレーン選択後にカードをクリック。</p></aside>
+</main>
+<script>
+let ws, me=-1, state=null, selectedHand=-1, selectedUnit=null, pendingCard=null;
+const $=id=>document.getElementById(id);
+function connect(){ws=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host);ws.onopen=()=>{$("status").textContent="接続済み"};ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==="joined"){me=m.idx;$("lobby").classList.add("hidden");$("game").classList.remove("hidden");$("status").textContent="ルーム "+m.code}else if(m.type==="state"){state=m.state;render()}else if(m.type==="error")alert(m.message)}}
+function send(o){ws.send(JSON.stringify(o))}
+function createRoom(){send({type:"create",faction:$("faction").value})}
+function joinRoom(){send({type:"join",code:$("code").value,faction:$("faction").value})}
+function render(){
+ const you=state.players[me], opp=state.players[1-me];
+ document.body.classList.toggle("turnMe", state.turn===me); document.body.classList.toggle("turnOpp", state.turn!==me);
+ const tb=$("turnBanner"); tb.className="turnBanner "+(state.turn===me?"myTurn":"oppTurn"); tb.textContent=state.turn===me?"🟢 あなたのターン — 行動できます":"🔴 相手のターン — 相手の行動を待っています";
+ $("info").innerHTML=`<div class=base>あなた ${you.faction}<br>本拠地 ❤️${you.base}</div><div class=base>相手 ${opp.faction}<br>本拠地 ❤️${opp.base}</div><div class=base>山札 🃏${you.deck}<br>手札 ${Array.isArray(state.hand)?state.hand.length:you.hand}</div><div class=base>${state.turn===me?"🟢 あなたのターン":"🔴 相手のターン"}<br>進軍 ${state.turn===me?"2回まで":"待機中"}</div>`;
+ const positions=me===0?[6,5,4,3,2,1,0]:[0,1,2,3,4,5,6];
+ let h="<div class=grid><div class=label>本拠地</div><div class=label>左</div><div class=label>中央</div><div class=label>右</div>";
+ for(const pos of positions){const label=pos+1;h+=`<div class=label>${label}</div>`;for(let lane=0;lane<3;lane++){const mine=state.board[me][pos].filter(u=>u.lane===lane), enemy=state.board[1-me][pos].filter(u=>u.lane===lane);h+=`<div class=cell onclick="laneClick(${lane},${pos})">${mine.map(u=>unitHTML(u,true)).join("")}${enemy.map(u=>unitHTML(u,false)).join("")}${state.traps[pos]>0?`<div class="mine">💣 伏せ罠</div>`:""}</div>`}}h+="</div>";
+ $("board").innerHTML=h;
+ $("hand").innerHTML=state.hand?.map((n,i)=>`<div class="card ${selectedHand===i?"selected":""}" onclick="selectCard(${i})"><b>${n}</b><br><span class=small>${cardText(n)}</span></div>`).join("")||"<span class=small>手札なし</span>";
+ const ready=you.readyResources??you.resources, used=you.usedResources??0;
+ $("actionInfo").innerHTML=`<span class=resourceMeter>💎 資源 <span class=ready>${ready} Ready</span> / <span class=used>${used} Used</span> / 合計 ${you.resources}</span><span class=zoneNote>　ターン開始時にUsed資源は全てReadyへ戻ります</span>`;
+ $("log").innerHTML=state.log.map(x=>`<div>${x}</div>`).join("");$("log").scrollTop=999999;
+}
+function cardText(n){const db={"共和国歩兵":"C2 / 2 / 2 / 歩兵","共和国兵隊":"C4 / 3 / 4 / 部隊","補給物資隊":"C3 / 1 / 3 / 配置時:資源+1","空中兵":"C3 / 2 / 2 / 空中","対空砲兵":"C4 / 2 / 5 / 対空+2","共和国元帥アルフォン":"C7 / 5 / 7 / 元帥の号令","鉄血補佐官 マロロ":"C20 / 7 / 7 / 英雄","独りよがりな骸":"C2 / 3 / 1","最後の王":"C15 / 1 / 25 / 英雄","新人知能 オメガ":"C2 / 1 / 3 / 進化サーチ","量産型知能 アルファ":"C3 / 1 / 3 / 資源+1","量産型知能 ベータ":"C7 / 2 / 8 / 進化","管理知能 オメガ":"C6 / 3 / 5 / 進化","連邦統括AI オメガ":"C12 / 4 / 6 / 進化","亜空知能 Ω-CORE":"C15 / 10 / 7 / 進化","自動迎撃知能 ガンマ":"C5 / 2 / 6 / 進化・対歩兵","空中知能 イプシロン":"C3 / 3 / 3 / 空中","第1獣軍副隊長 トラ":"C3 / 4 / 3 / 咆哮"};return db[n]||"カード"}
+function unitHTML(u,mine){return `<div class="unit ${mine?"my":"opp"}" onclick="unitClick(event,'${u.id}')"><b>${u.name}</b><br>⚔️${u.atk} ❤️${u.hp}/${u.maxHp}</div>`}
+function selectCard(i){selectedHand=(selectedHand===i?-1:i);render();}
+function laneClick(lane,pos){if(selectedHand<0)return;const myStart=me===0?0:6;if(pos!==myStart)return;send({type:"action",action:"play",hand:selectedHand,lane,pos});selectedHand=-1}
+function unitClick(e,id){e.stopPropagation();if(state.turn===me)send({type:"action",action:"move",id})}
+function resource(){if(selectedHand<0)return alert("資源化するカードを選択");send({type:"action",action:"resource",hand:selectedHand});selectedHand=-1}
+function passTurn(){send({type:"action",action:"pass"});selectedHand=-1}
+connect();
+</script>
+</body></html>

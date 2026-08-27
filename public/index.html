@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WORLDLINE WAR</title>
+<style>
+body{margin:0;background:linear-gradient(135deg,#0c111b,#182331);color:#eee;font-family:system-ui,sans-serif;transition:background .35s ease}body.turnMe{background:linear-gradient(135deg,#081a38,#0d315d)}body.turnOpp{background:linear-gradient(135deg,#3a0b12,#661a24)}button,input,select{font:inherit}
+header{position:sticky;top:0;z-index:20;padding:12px 18px;background:#181d27;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 12px #0006}
+main{display:grid;grid-template-columns:1fr 330px;gap:12px;padding:12px;max-width:1300px;margin:auto}
+#board{background:#d7d1c5;padding:10px;border-radius:12px;color:#111}.grid{display:grid;grid-template-columns:80px repeat(3,1fr);gap:5px}.cell{min-height:90px;background:#f4efe6;border:2px solid #aaa;border-radius:8px;padding:5px;position:relative}.label{font-weight:700;display:flex;align-items:center;justify-content:center}.unit{background:#fff;border:1px solid #444;border-radius:7px;padding:5px;margin:2px;font-size:12px;cursor:pointer}.mine{background:#222;color:#fff;font-size:10px}.my{outline:2px solid #3ba7ff}.opp{outline:2px solid #ff5b62}.base{background:#333;color:#fff;border-radius:8px;padding:10px;text-align:center}.hand{display:flex;flex-wrap:wrap;gap:6px;max-height:250px;overflow:auto}.card{background:#f8f8f8;color:#111;border-radius:10px;padding:9px;width:145px;cursor:pointer;border:3px solid transparent;box-shadow:0 4px 10px #0005}.card.selected{border-color:#ffd43b;transform:translateY(-4px)}.card:hover{border-color:#3ba7ff}.small{font-size:12px;color:#bbb}.turnBanner{margin:8px 0;padding:10px 14px;border-radius:10px;font-weight:900;text-align:center;background:#111722;border:1px solid #394454}.turnBanner.myTurn{background:#0d3b26;border-color:#39c77b}.turnBanner.oppTurn{background:#4b1720;border-color:#e45b69}.panel{background:#181d27;border-radius:12px;padding:12px}.log{height:300px;overflow:auto;background:#0b0d12;padding:8px;border-radius:8px;font-size:12px}.top{display:flex;gap:8px;flex-wrap:wrap}.hidden{display:none}.stickybar{position:sticky;bottom:0;z-index:15;margin-top:10px;padding:10px;background:#111722;border:1px solid #394454;border-radius:12px;box-shadow:0 -4px 18px #0008}.resourceMeter{font-weight:800}.ready{color:#6ee7a0}.used{color:#ff9c9c}.zoneNote{font-size:11px;color:#aaa}
+/* ===== バトル演出 ===== */
+@keyframes cardPlay {
+  0% { transform:scale(.5) translateY(-30px); opacity:0; }
+  60% { transform:scale(1.15); opacity:1; }
+  100% { transform:scale(1); opacity:1; }
+}
+
+@keyframes damageFlash {
+  0%,100% { filter:brightness(1); transform:translateX(0); }
+  20% { filter:brightness(2); transform:translateX(-8px); }
+  40% { transform:translateX(8px); }
+  60% { transform:translateX(-5px); }
+  80% { transform:translateX(5px); }
+}
+
+@keyframes turnFlash {
+  0% { transform:scale(.8); opacity:0; }
+  20% { transform:scale(1.08); opacity:1; }
+  80% { transform:scale(1); opacity:1; }
+  100% { opacity:0; }
+}
+
+.playEffect {
+  animation:cardPlay .45s ease-out;
+}
+
+.damageEffect {
+  animation:damageFlash .5s ease-in-out;
+}
+
+#effectText {
+  position:fixed;
+  left:50%;
+  top:35%;
+  transform:translate(-50%,-50%);
+  z-index:100;
+  font-size:42px;
+  font-weight:900;
+  text-shadow:0 4px 15px #000;
+  pointer-events:none;
+  opacity:0;
+}
+
+#effectText.show {
+  animation:turnFlash 1.2s ease-out;
+}
+#effectOverlay{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(120,0,0,.45);
+  animation:effectFlash .18s ease-in-out 2;
+}
+
+#effectOverlay.hidden{
+  display:none;
+}
+
+#effectBox{
+  background:#111722;
+  border:3px solid #ff4d5a;
+  border-radius:18px;
+  padding:28px 45px;
+  text-align:center;
+  box-shadow:0 0 40px #ff2638aa;
+  animation:effectPop .25s ease-out;
+}
+
+#effectTitle{
+  font-size:34px;
+  font-weight:900;
+  color:#ff5b62;
+}
+
+#effectText{
+  margin-top:10px;
+  font-size:20px;
+  font-weight:700;
+}
+
+@keyframes effectPop{
+  from{transform:scale(.65);opacity:0}
+  to{transform:scale(1);opacity:1}
+}
+
+@keyframes effectFlash{
+  0%,100%{opacity:1}
+  50%{opacity:.65}
+}
+</style>
+</head>
+<body>
+<div id="effectText"></div>
+
+<header><b>🌍 WORLDLINE WAR</b><span id=status>接続中…</span></header>
+<main>
+<section>
+<div id=lobby class=panel>
+<h2>オンライン対戦</h2>
+<select id=faction><option value=modern>🇺🇳 近代王国</option><option value=lonely>👑 孤独王国</option><option value=cyber>🤖 サイバー連邦</option></select>
+<button onclick=createRoom()>ルームを作る</button>
+<hr><input id=code placeholder="ルームコード"><button onclick=joinRoom()>参加</button>
+<p class=small>2人対戦。作成者がコードを相手に共有してください。</p>
+</div>
+<div id=game class=hidden>
+<div class=top id=info></div><div id=turnBanner class="turnBanner"></div><div id=board></div>
+<div id="facilityDisplay" class="panel">
+  🏭 <b>現在の施設</b>
+  <div id="facilityInfo" class="small">施設なし</div>
+</div>
+<h3>🃏 手札 <span class=small>（クリックで選択）</span></h3><div class=hand id=hand></div>
+<div id="cardEffectPanel" class="panel hidden">
+  <b>📜 選択中のカード</b>
+  <div id="selectedCardName"></div>
+  <div id="selectedCardEffect" class="small"></div>
+  <button onclick="cancelCardSelection()">選択を解除</button>
+</div><p id=hint class=small>兵を出す：カード選択 → 左/中央/右レーンの1マス目をクリック。資源化：カード選択 →「資源化」。</p>
+<div class="stickybar"><div id=actionInfo class="top"></div><div class=top><button onclick=resource()>選択カードを資源化</button><button onclick=passTurn()>ターン終了</button></div></div>
+</div>
+</section>
+<aside class=panel><h3>戦闘ログ</h3><div id=log class=log></div><p class=small>カードをクリックすると選択。兵をクリックすると進軍。配置はレーン選択後にカードをクリック。</p></aside>
+</main>
+<script>
+let ws, me=-1, state=null, selectedHand=-1, selectedUnit=null, pendingCard=null;
+let lastLogCount = 0;
+let lastTurn = -1;
+
+function showEffect(text){
+  const el=$("effectText");
+  el.textContent=text;
+  el.classList.remove("show");
+  void el.offsetWidth;
+  el.classList.add("show");
+}
+
+function checkEffects(){
+  if(!state) return;
+
+  if(lastTurn!==-1 && state.turn!==lastTurn){
+    showEffect(state.turn===me ? "🟢 YOUR TURN!" : "🔴 ENEMY TURN!");
+  }
+
+  if(state.log.length>lastLogCount){
+    const newLogs=state.log.slice(lastLogCount);
+
+    for(const msg of newLogs){
+      if(msg.includes("⚔️")){
+        showEffect("⚔️ BATTLE!");
+      }
+      if(msg.includes("🏰")){
+        showEffect("🏰 BASE HIT!");
+      }
+      if(msg.includes("💣")){
+        showEffect("💥 TRAP!");
+      }
+    }
+  }
+
+  lastLogCount=state.log.length;
+  lastTurn=state.turn;
+}
+const $=id=>document.getElementById(id);
+function connect(){ws=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host);ws.onopen=()=>{$("status").textContent="接続済み"};ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==="trapEffect") showTrapEffect(m.title,m.text);if(m.type==="joined"){me=m.idx;$("lobby").classList.add("hidden");$("game").classList.remove("hidden");$("status").textContent="ルーム "+m.code}else if(m.type==="state"){state=m.state;render()}else if(m.type==="error")alert(m.message)}}
+function send(o){ws.send(JSON.stringify(o))}
+function createRoom(){send({type:"create",faction:$("faction").value})}
+function joinRoom(){send({type:"join",code:$("code").value,faction:$("faction").value})}
+function showTrapEffect(title,text){
+  const overlay=$("effectOverlay");
+  $("effectTitle").textContent=title;
+  $("effectText").textContent=text;
+  overlay.classList.remove("hidden");
+
+  setTimeout(()=>{
+    overlay.classList.add("hidden");
+  },1800);
+}
+function render(){
+ const you=state.players[me], opp=state.players[1-me];
+ document.body.classList.toggle("turnMe", state.turn===me); document.body.classList.toggle("turnOpp", state.turn!==me);
+ const tb=$("turnBanner"); tb.className="turnBanner "+(state.turn===me?"myTurn":"oppTurn"); tb.textContent=state.turn===me?"🟢 あなたのターン — 行動できます":"🔴 相手のターン — 相手の行動を待っています";
+ $("info").innerHTML=`<div class=base>あなた ${you.faction}<br>本拠地 ❤️${you.base}</div><div class=base>相手 ${opp.faction}<br>本拠地 ❤️${opp.base}</div><div class=base>山札 🃏${you.deck}<br>手札 ${Array.isArray(state.hand)?state.hand.length:you.hand}</div><div class=base>${state.turn===me?"🟢 あなたのターン":"🔴 相手のターン"}<br>進軍 ${state.turn===me?"2回まで":"待機中"}</div>`;
+ const positions=me===0?[6,5,4,3,2,1,0]:[0,1,2,3,4,5,6];
+ let h="<div class=grid><div class=label>本拠地</div><div class=label>左</div><div class=label>中央</div><div class=label>右</div>";
+ for(const pos of positions){const label=pos+1;h+=`<div class=label>${label}</div>`;for(let lane=0;lane<3;lane++){const mine=state.board[me][pos].filter(u=>u.lane===lane), enemy=state.board[1-me][pos].filter(u=>u.lane===lane);h+=`<div class=cell onclick="laneClick(${lane},${pos})">${mine.map(u=>unitHTML(u,true)).join("")}${enemy.map(u=>unitHTML(u,false)).join("")}${state.traps[pos]>0?`<div class="mine">💣 伏せ罠</div>`:""}</div>`}}h+="</div>";
+ $("board").innerHTML=h;
+const facility = state.facility;
+if(facility){
+  $("facilityInfo").innerHTML = `<b>${facility.name}</b><br>${facilityEffectText(facility.name)}`;
+}else{
+  $("facilityInfo").textContent = "施設なし";
+}
+ $("hand").innerHTML=state.hand?.map((n,i)=>`<div class="card ${selectedHand===i?"selected":""}" onclick="selectCard(${i})"><b>${n}</b><br><span class=small>${cardText(n)}</span></div>`).join("")||"<span class=small>手札なし</span>";
+ const ready=you.readyResources??you.resources, used=you.usedResources??0;
+ $("actionInfo").innerHTML=`<span class=resourceMeter>💎 資源 <span class=ready>${ready} Ready</span> / <span class=used>${used} Used</span> / 合計 ${you.resources}</span><span class=zoneNote>　ターン開始時にUsed資源は全てReadyへ戻ります</span>`;
+ $("log").innerHTML=state.log.map(x=>`<div>${x}</div>`).join("");$("log").scrollTop=999999;
+updateCardEffectPanel();
+checkEffects();
+}
+function facilityEffectText(name){
+  const effects={
+    "官営軍需工場":"自分のターン開始時、カードを1枚引く",
+    "地獄への扉":"自分のターン開始時、山札の上から1枚を墓地へ送る",
+    "超越した知能媒体≪unknown≫":"進化系カードと組み合わせて効果を発揮"
+  };
+  return effects[name]||"効果不明";
+}
+function updateCardEffectPanel(){
+  const panel=$("cardEffectPanel");
+
+  if(selectedHand<0 || !state?.hand?.[selectedHand]){
+    panel.classList.add("hidden");
+    return;
+  }
+
+  const name=state.hand[selectedHand];
+  const c=null;
+
+  $("selectedCardName").textContent=name;
+$("selectedCardEffect").innerHTML=`💎 コスト：${cardCost(name)}<br>${cardEffectText(name,c)}`;
+
+  panel.classList.remove("hidden");
+}
+function cardCost(name){
+  const costs={
+    "共和国元帥アルフォン":7,
+    "共和国歩兵":2,
+    "共和国兵隊":4,
+    "補給物資隊":3,
+    "空中兵":3,
+    "対空砲兵":4,
+    "増税令":2,
+    "総動員令":4,
+    "官営軍需工場":3,
+    "地雷原":2,
+
+    "最後の王":15,
+    "独りよがりな骸":2,
+    "いつかの亡者":3,
+    "地へと誘う手":2,
+    "頭蓋風船":4,
+    "あの日の記憶":3,
+    "地獄への扉":3,
+    "忘れられた墓場":1,
+    "髑髏郵送車両":4,
+    "死者選択":3,
+    "再顕現":3,
+
+    "鉄血補佐官 マロロ":20,
+    "新人知能 オメガ":2,
+    "量産型知能 アルファ":3,
+    "量産型知能 ベータ":7,
+    "管理知能 オメガ":6,
+    "連邦統括AI オメガ":12,
+    "初期化プログラム":8,
+    "亜空知能 Ω-CORE":15,
+    "自動迎撃知能 ガンマ":5,
+    "空中知能 イプシロン":3,
+    "リバースレーザー砲":9,
+    "超越した知能媒体≪unknown≫":4,
+
+    "緊急国会会議":12,
+    "第1獣軍副隊長 トラ":3
+  };
+
+  return costs[name] ?? "?";
+}
+
+function cancelCardSelection(){
+  selectedHand=-1;
+  render();
+}
+
+function cardText(n){
+  const db={
+    "共和国歩兵":"C2 / 2 / 2 / 歩兵",
+    "共和国兵隊":"C4 / 3 / 4 / 部隊",
+    "補給物資隊":"C3 / 1 / 3 / 配置時:資源+1",
+    "空中兵":"C3 / 2 / 2 / 空中",
+    "対空砲兵":"C4 / 2 / 5 / 対空+2",
+    "共和国元帥アルフォン":"C7 / 5 / 7 / 元帥の号令",
+    "鉄血補佐官 マロロ":"C20 / 7 / 7 / 英雄",
+    "独りよがりな骸":"C2 / 3 / 1",
+    "最後の王":"C15 / 1 / 25 / 英雄",
+    "いつかの亡者":"C3 / 2 / 3 / 忘却・埋もれた記憶",
+    "地へと誘う手":"C2 / 3 / 1 / 道連れ",
+    "頭蓋風船":"C4 / 2 / 5 / 空中",
+    "髑髏郵送車両":"C4 / 2 / 6 / 最期の配達",
+
+    "新人知能 オメガ":"C2 / 1 / 3 / 進化サーチ",
+    "量産型知能 アルファ":"C3 / 1 / 3 / 資源+1",
+    "量産型知能 ベータ":"C7 / 2 / 8 / 進化",
+    "管理知能 オメガ":"C6 / 3 / 5 / 進化",
+    "連邦統括AI オメガ":"C12 / 4 / 6 / 進化",
+    "亜空知能 Ω-CORE":"C15 / 10 / 7 / 進化",
+    "自動迎撃知能 ガンマ":"C5 / 2 / 6 / 進化・対歩兵",
+    "空中知能 イプシロン":"C3 / 3 / 3 / 空中・ドロー",
+
+    "第1獣軍副隊長 トラ":"C3 / 4 / 3 / 咆哮",
+
+    "増税令":"C2 / 戦術 / 2枚ドロー",
+    "総動員令":"C4 / 戦術 / 1マス進軍",
+    "官営軍需工場":"C3 / 施設 / ターン開始時1枚ドロー",
+    "地雷原":"C2 / 罠 / 踏んだ兵に3ダメージ",
+    "あの日の記憶":"C3 / 戦術 / 墓地の骸の数だけ資源",
+    "地獄への扉":"C3 / 施設 / ターン開始時1枚墓地",
+    "忘れられた墓場":"C1 / 罠 / 次のターン進軍不可",
+    "死者選択":"C3 / 戦術 / お互いに1枚捨てる",
+    "再顕現":"C3 / 戦略 / 骸を再配置",
+    "初期化プログラム":"C8 / 戦術 / 墓地を山札へ",
+    "リバースレーザー砲":"C9 / 罠 / 相手カードを手札へ戻す",
+    "超越した知能媒体≪unknown≫":"C4 / 施設 / 進化時1枚ドロー",
+    "緊急国会会議":"C12 / 戦術 / コスト3以下を手札へ戻す"
+  };
+
+  return db[n]||"カード";
+}
+
+function unitHTML(u,mine){return `<div class="unit ${mine?"my":"opp"}" onclick="unitClick(event,'${u.id}')"><b>${u.name}</b><br>⚔️${u.atk} ❤️${u.hp}/${u.maxHp}</div>`}
+function updateCardEffectPanel(){
+  const panel=$("cardEffectPanel");
+
+  if(selectedHand<0 || !state?.hand?.[selectedHand]){
+    panel.classList.add("hidden");
+    return;
+  }
+
+  const name=state.hand[selectedHand];
+
+  $("selectedCardName").textContent=name;
+  $("selectedCardEffect").innerHTML=
+    `💎 コスト：${cardCost(name)}<br>${cardEffectText(name)}`;
+
+  panel.classList.remove("hidden");
+}
+
+function cardEffectText(name){
+  const effects={
+    "増税令":"カードを2枚引く。",
+    "総動員令":"歩兵または部隊1体を1マス進軍させる。",
+    "官営軍需工場":"自分のターン開始時、カードを1枚引く。",
+    "地雷原":"敵兵が進軍した時、その兵に3ダメージ。発動後墓地へ送る。",
+    "最後の王":"墓地の「独りよがりな骸」の数だけ配置コストを減らす。敵兵を無視して進軍できる。墓地へ送られた時、手札へ戻る。",
+    "独りよがりな骸":"効果なし。",
+    "いつかの亡者":"独りよがりな骸の攻撃力-1。骸が墓地へ送られた時、山札の上から1枚を墓地へ送ってもよい。",
+    "地へと誘う手":"罠の効果を受ける時、自分の他の兵1体に効果を肩代わりさせてもよい。",
+    "頭蓋風船":"効果なし。",
+    "あの日の記憶":"お互いの墓地にある「独りよがりな骸」の数だけ、山札の上から資源ゾーンへ置く。最大7枚。",
+    "地獄への扉":"自分のターン開始時、山札の上から1枚を墓地へ送ってもよい。",
+    "忘れられた墓場":"踏んだ兵は、次のその兵のコントローラーのターン中、進軍できない。発動後墓地へ送る。",
+    "髑髏郵送車両":"フィールドを離れた時、手札を1枚選んで捨てる。",
+    "死者選択":"相手は手札を1枚選んで捨てる。その後、自分も手札を1枚捨ててもよい。",
+    "再顕現":"盤面の「独りよがりな骸」を墓地へ置き、山札と墓地から骸を配置する。骸がいない場合は山札の上から2枚を墓地へ置く。",
+    "新人知能 オメガ":"ターン終了時、山札の上を見る。「進化」があれば手札へ。そうでなければ山札の下へ置いてもよい。",
+    "量産型知能 アルファ":"配置時、山札の上から1枚を資源ゾーンへ置く。",
+    "量産型知能 ベータ":"【進化】",
+    "管理知能 オメガ":"【進化】配置時、山札の上から4枚を見て1枚を手札へ。",
+    "連邦統括AI オメガ":"【進化】配置時、山札から「進化」を持つ兵を資源なしで配置してもよい。",
+    "初期化プログラム":"自分の墓地のカードをすべて山札に加えてシャッフルする。",
+    "亜空知能 Ω-CORE":"【進化】配置時、自分の施設を1枚墓地へ置くと相手の兵を3体まで墓地へ置く。",
+    "自動迎撃知能 ガンマ":"【進化】歩兵との戦闘中、攻撃力+2。",
+    "空中知能 イプシロン":"戦闘する時、カードを1枚引いてもよい。",
+    "リバースレーザー砲":"踏んだ相手のカードを手札に戻す。同名カードの配置・進軍を次の相手ターン終了時まで禁止。",
+    "超越した知能媒体≪unknown≫":"自分が【進化】を使用した時、カードを1枚引いてもよい。引いた場合、山札の上から1枚を墓地へ置く。",
+    "緊急国会会議":"盤面の全兵カード数だけコストを減らす。その後、相手のコスト3以下の兵をすべて手札へ戻す。",
+    "第1獣軍副隊長 トラ":"【咆哮】他の兵が【咆哮】を使用した時、相手の兵1体を1マス戻す。戻せなければ手札へ戻す。"
+  };
+
+  return effects[name] || "効果なし。";
+}
+
+function selectCard(i){
+  selectedHand=(selectedHand===i?-1:i);
+  render();
+}
+function selectCard(i){selectedHand=(selectedHand===i?-1:i);render();}
+function laneClick(lane,pos){
+  if(selectedHand<0)return;
+
+  const cardName=state.hand[selectedHand];
+  const card=cardName?cardName:"";
+
+  if(card==="地雷原" || card==="忘れられた墓場" || card==="リバースレーザー砲"){
+    const allowed=me===0?[0,1]:[6,5];
+
+    if(!allowed.includes(pos)){
+      alert("💣 罠は自陣の1・2マス目にしか置けません");
+      return;
+    }
+
+    const enemyUnits=state.board[1-me][pos];
+    if(enemyUnits.length>0){
+      alert("⚠️ そこには敵がいるため、罠を置けません");
+      return;
+    }
+
+    send({type:"action",action:"play",hand:selectedHand,pos});
+    selectedHand=-1;
+    return;
+  }
+
+  const myStart=me===0?0:6;
+  if(pos!==myStart)return;
+
+  send({type:"action",action:"play",hand:selectedHand,lane,pos});
+  selectedHand=-1;
+}
+function unitClick(e,id){e.stopPropagation();if(state.turn===me)send({type:"action",action:"move",id})}
+function resource(){if(selectedHand<0)return alert("資源化するカードを選択");send({type:"action",action:"resource",hand:selectedHand});selectedHand=-1}
+function passTurn(){send({type:"action",action:"pass"});selectedHand=-1}
+connect();
+</script>
+<div id="effectOverlay" class="hidden">
+  <div id="effectBox">
+    <div id="effectTitle">💥 罠発動！</div>
+    <div id="effectText"></div>
+  </div>
+</div>
+</body></html>
