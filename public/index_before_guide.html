@@ -4,128 +4,10 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WORLDLINE WAR</title>
 <style>
-.graveSummary{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  margin:8px 0;
-}
-
-.graveSummary>div{
-  background:#111722;
-  border:1px solid #394454;
-  border-radius:10px;
-  padding:8px 10px;
-}
-
-.graveSummary button{
-  margin-left:6px;
-  cursor:pointer;
-}
-
-#graveOverlay{
-  position:fixed;
-  inset:0;
-  z-index:200;
-  background:#000b;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:20px;
-}
-
-#graveOverlay.hidden{
-  display:none;
-}
-
-#graveModal{
-  position:relative;
-  width:min(900px,95vw);
-  max-height:85vh;
-  overflow-y:auto;
-  background:#181d27;
-  border:2px solid #394454;
-  border-radius:16px;
-  padding:20px;
-  box-shadow:0 10px 40px #000;
-}
-
-.graveClose{
-  position:absolute;
-  top:10px;
-  right:10px;
-  border:0;
-  background:#333;
-  color:#fff;
-  font-size:22px;
-  border-radius:7px;
-  cursor:pointer;
-  padding:3px 10px;
-}
-
-#graveCards{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
-  gap:10px;
-}
-
-.graveCard{
-  background:#f8f8f8;
-  color:#111;
-  border-radius:10px;
-  padding:12px;
-  min-height:90px;
-  box-shadow:0 4px 12px #0005;
-}
-
-.graveCard b{
-  font-size:15px;
-}
-
-.graveCard .small{
-  color:#444;
-}
 body{margin:0;background:linear-gradient(135deg,#0c111b,#182331);color:#eee;font-family:system-ui,sans-serif;transition:background .35s ease}body.turnMe{background:linear-gradient(135deg,#081a38,#0d315d)}body.turnOpp{background:linear-gradient(135deg,#3a0b12,#661a24)}button,input,select{font:inherit}
 header{position:sticky;top:0;z-index:20;padding:12px 18px;background:#181d27;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 12px #0006}
 main{display:grid;grid-template-columns:1fr 330px;gap:12px;padding:12px;max-width:1300px;margin:auto}
 #board{background:#d7d1c5;padding:10px;border-radius:12px;color:#111}.grid{display:grid;grid-template-columns:80px repeat(3,1fr);gap:5px}.cell{min-height:90px;background:#f4efe6;border:2px solid #aaa;border-radius:8px;padding:5px;position:relative}.label{font-weight:700;display:flex;align-items:center;justify-content:center}.unit{background:#fff;border:1px solid #444;border-radius:7px;padding:5px;margin:2px;font-size:12px;cursor:pointer}.mine{background:#222;color:#fff;font-size:10px}.my{outline:2px solid #3ba7ff}.opp{outline:2px solid #ff5b62}.base{background:#333;color:#fff;border-radius:8px;padding:10px;text-align:center}.hand{display:flex;flex-wrap:wrap;gap:6px;max-height:250px;overflow:auto}.card{background:#f8f8f8;color:#111;border-radius:10px;padding:9px;width:145px;cursor:pointer;border:3px solid transparent;box-shadow:0 4px 10px #0005}.card.selected{border-color:#ffd43b;transform:translateY(-4px)}.card:hover{border-color:#3ba7ff}.small{font-size:12px;color:#bbb}.turnBanner{margin:8px 0;padding:10px 14px;border-radius:10px;font-weight:900;text-align:center;background:#111722;border:1px solid #394454}.turnBanner.myTurn{background:#0d3b26;border-color:#39c77b}.turnBanner.oppTurn{background:#4b1720;border-color:#e45b69}.panel{background:#181d27;border-radius:12px;padding:12px}.log{height:300px;overflow:auto;background:#0b0d12;padding:8px;border-radius:8px;font-size:12px}.top{display:flex;gap:8px;flex-wrap:wrap}.hidden{display:none}.stickybar{position:sticky;bottom:0;z-index:15;margin-top:10px;padding:10px;background:#111722;border:1px solid #394454;border-radius:12px;box-shadow:0 -4px 18px #0008}.resourceMeter{font-weight:800}.ready{color:#6ee7a0}.used{color:#ff9c9c}.zoneNote{font-size:11px;color:#aaa}
-/* ===== 初心者ガイド ===== */
-.guidePanel{
-  position:fixed;
-  right:20px;
-  top:80px;
-  width:360px;
-  max-height:calc(100vh - 110px);
-  overflow-y:auto;
-  z-index:50;
-  background:#181d27;
-  color:#eee;
-  border:2px solid #394454;
-  border-radius:14px;
-  padding:16px;
-  box-shadow:0 8px 30px #000b;
-}
-
-.guidePanel h2{
-  margin-top:0;
-}
-
-.guidePanel button{
-  margin:4px;
-  cursor:pointer;
-}
-
-.guideClose{
-  position:absolute;
-  top:8px;
-  right:8px;
-  border:0;
-  background:#333;
-  color:#fff;
-  border-radius:6px;
-  padding:4px 8px;
-  cursor:pointer;
-}
 /* ===== バトル演出 ===== */
 @keyframes cardPlay {
   0% { transform:scale(.5) translateY(-30px); opacity:0; }
@@ -230,20 +112,11 @@ main{display:grid;grid-template-columns:1fr 330px;gap:12px;padding:12px;max-widt
 <h2>オンライン対戦</h2>
 <select id=faction><option value=modern>🇺🇳 近代王国</option><option value=lonely>👑 孤独王国</option><option value=cyber>🤖 サイバー連邦</option></select>
 <button onclick=createRoom()>ルームを作る</button>
-<button onclick="openGuide()">📖 初心者ガイド</button>
 <hr><input id=code placeholder="ルームコード"><button onclick=joinRoom()>参加</button>
 <p class=small>2人対戦。作成者がコードを相手に共有してください。</p>
 </div>
 <div id=game class=hidden>
-<div class=top id=info></div>
-<div class="graveSummary">
-  <div>☠️ 自分の墓地：<b id="myGraveCount">0</b>枚
-    <button onclick="openGrave(0)">墓地を見る</button>
-  </div>
-  <div>☠️ 相手の墓地：<b id="oppGraveCount">0</b>枚
-    <button onclick="openGrave(1)">墓地を見る</button>
-  </div>
-</div><div id=turnBanner class="turnBanner"></div><div id=board></div>
+<div class=top id=info></div><div id=turnBanner class="turnBanner"></div><div id=board></div>
 <div id="facilityDisplay" class="panel">
   🏭 <b>現在の施設</b>
   <div id="facilityInfo" class="small">施設なし</div>
@@ -319,9 +192,6 @@ function render(){
  document.body.classList.toggle("turnMe", state.turn===me); document.body.classList.toggle("turnOpp", state.turn!==me);
  const tb=$("turnBanner"); tb.className="turnBanner "+(state.turn===me?"myTurn":"oppTurn"); tb.textContent=state.turn===me?"🟢 あなたのターン — 行動できます":"🔴 相手のターン — 相手の行動を待っています";
  $("info").innerHTML=`<div class=base>あなた ${you.faction}<br>本拠地 ❤️${you.base}</div><div class=base>相手 ${opp.faction}<br>本拠地 ❤️${opp.base}</div><div class=base>山札 🃏${you.deck}<br>手札 ${Array.isArray(state.hand)?state.hand.length:you.hand}</div><div class=base>${state.turn===me?"🟢 あなたのターン":"🔴 相手のターン"}<br>進軍 ${state.turn===me?"2回まで":"待機中"}</div>`;
-$("info").innerHTML += `<div class="base">🪦 墓地 ${Array.isArray(you.grave)?you.grave.length:you.grave}枚</div>`;
-$("myGraveCount").textContent=you.grave?.length??0;
-$("oppGraveCount").textContent=opp.grave?.length??0;
  const positions=me===0?[6,5,4,3,2,1,0]:[0,1,2,3,4,5,6];
  let h="<div class=grid><div class=label>本拠地</div><div class=label>左</div><div class=label>中央</div><div class=label>右</div>";
  for(const pos of positions){const label=pos+1;h+=`<div class=label>${label}</div>`;for(let lane=0;lane<3;lane++){const mine=state.board[me][pos].filter(u=>u.lane===lane), enemy=state.board[1-me][pos].filter(u=>u.lane===lane);h+=`<div class=cell onclick="laneClick(${lane},${pos})">${mine.map(u=>unitHTML(u,true)).join("")}${enemy.map(u=>unitHTML(u,false)).join("")}${state.traps[pos]>0?`<div class="mine">💣 伏せ罠</div>`:""}</div>`}}h+="</div>";
@@ -550,157 +420,12 @@ function laneClick(lane,pos){
 function unitClick(e,id){e.stopPropagation();if(state.turn===me)send({type:"action",action:"move",id})}
 function resource(){if(selectedHand<0)return alert("資源化するカードを選択");send({type:"action",action:"resource",hand:selectedHand});selectedHand=-1}
 function passTurn(){send({type:"action",action:"pass"});selectedHand=-1}
-function openGrave(which){
-  const player=which===0
-    ? state.players[me]
-    : state.players[1-me];
-
-  const names=player.grave||[];
-
-  $("graveTitle").textContent=
-    which===0
-      ? `☠️ 自分の墓地（${names.length}枚）`
-      : `☠️ 相手の墓地（${names.length}枚）`;
-
-  if(!names.length){
-    $("graveCards").innerHTML=
-      `<div class="small">墓地にカードはありません。</div>`;
-  }else{
-    $("graveCards").innerHTML=names.map(name=>`
-      <div class="graveCard">
-        <b>${name}</b>
-        <div class="small">${cardEffectText(name)}</div>
-      </div>
-    `).join("");
-  }
-
-  $("graveOverlay").classList.remove("hidden");
-}
-
-function closeGrave(){
-  $("graveOverlay").classList.add("hidden");
-}
 connect();
 </script>
 <div id="effectOverlay" class="hidden">
   <div id="effectBox">
     <div id="effectTitle">💥 罠発動！</div>
     <div id="effectText"></div>
-  </div>
-</div>
-<!-- 初心者ガイド -->
-<div id="guideOverlay" class="hidden">
-  <div id="guideBox">
-    <button id="guideClose" onclick="closeGuide()">×</button>
-
-    <h2>📖 WORLDLINE WAR 初心者ガイド</h2>
-
-    <div class="guideTabs">
-      <button onclick="showGuide('goal')">🎯 勝利条件</button>
-      <button onclick="showGuide('turn')">🔄 ターン</button>
-      <button onclick="showGuide('card')">🃏 カード</button>
-      <button onclick="showGuide('battle')">⚔️ 戦闘</button>
-      <button onclick="showGuide('trap')">💥 罠</button>
-      <button onclick="showGuide('effect')">✨ 効果</button>
-    </div>
-
-    <div id="guideContent">
-      <h3>🎯 勝利条件</h3>
-      <p>相手の本拠地を0にすれば勝利！</p>
-      <p>自分の本拠地が0になると敗北です。</p>
-      <p>山札がなくなった場合も敗北になります。</p>
-    </div>
-  </div>
-</div>
-
-<script>
-function openGuide(){
-  document.getElementById("guideOverlay").classList.remove("hidden");
-  showGuide("goal");
-}
-
-function closeGuide(){
-  document.getElementById("guideOverlay").classList.add("hidden");
-}
-
-function showGuide(type){
-  const content=document.getElementById("guideContent");
-
-  const guides={
-    goal:`
-      <h3>🎯 勝利条件</h3>
-      <p>相手の本拠地を0にすれば勝利！</p>
-      <p>自分の本拠地が0になると敗北です。</p>
-      <p>山札がなくなった場合も敗北になります。</p>
-    `,
-
-    turn:`
-      <h3>🔄 ターンの流れ</h3>
-      <p>自分のターンになったら、カードを使って戦おう！</p>
-      <ol>
-        <li>ターン開始時に資源が回復します。</li>
-        <li>通常はカードを1枚引きます。</li>
-        <li>手札からカードを資源にできます。</li>
-        <li>資源を使ってカードをプレイします。</li>
-        <li>兵を進軍させます。</li>
-        <li>やることが終わったら「ターン終了」です。</li>
-      </ol>
-      <p>💡 資源にできるカードは1ターンに1枚まで！</p>
-    `,
-
-    card:`
-      <h3>🃏 カードの使い方</h3>
-      <p>カードには使用するためのコストがあります。</p>
-      <p><b>C3 / 2 / 2</b> なら、</p>
-      <ul>
-        <li>C3 → コスト3</li>
-        <li>⚔️2 → 攻撃力2</li>
-        <li>❤️2 → 体力2</li>
-      </ul>
-      <p>資源を使ってカードをプレイしよう！</p>
-      <p>カードをクリックすると、画面下に効果が表示されます。</p>
-    `,
-
-    battle:`
-      <h3>⚔️ 進軍と戦闘</h3>
-      <p>自分の兵をクリックすると、前のマスへ進軍します。</p>
-      <p>敵がいなければ、そのまま前進します。</p>
-      <p>敵がいる場合は戦闘になります。</p>
-      <p>⚔️ 戦闘では、お互いにダメージを与えます。</p>
-      <ul>
-        <li>敵だけ倒れた → 自分の兵が前進</li>
-        <li>両方生き残った → 攻撃した兵が1マス後退</li>
-        <li>両方倒れた → 両方墓地へ</li>
-      </ul>
-      <p>通常の進軍は1ターンに最大2回です。</p>
-    `,
-
-    trap:`
-      <h3>💥 罠について</h3>
-      <p>罠は指定された自陣側のマスに設置できます。</p>
-      <p>相手の兵が罠のあるマスへ進むと発動します。</p>
-      <p><b>地雷原</b> → 踏んだ兵に3ダメージ</p>
-      <p><b>忘れられた墓場</b> → 次のターン進軍できなくなる</p>
-      <p><b>リバースレーザー砲</b> → 踏んだ兵を手札へ戻す</p>
-    `,
-
-    effect:`
-      <h3>✨ カード効果</h3>
-      <p>カードには、それぞれ特殊な効果があります。</p>
-      <p>分からないカードがあったら、まずカードをクリックして効果を確認しよう！</p>
-      <p>カードの効果は、今後さらに増えていく予定です。</p>
-      <p>💡 最初は「資源 → カード → 進軍」の流れを覚えればOK！</p>
-    `
-  };
-
-  content.innerHTML=guides[type]||guides.goal;
-}
-</script>
-<div id="graveOverlay" class="hidden">
-  <div id="graveModal">
-    <button class="graveClose" onclick="closeGrave()">×</button>
-    <h2 id="graveTitle">☠️ 墓地</h2>
-    <div id="graveCards"></div>
   </div>
 </div>
 </body></html>

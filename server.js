@@ -67,7 +67,7 @@ function publicState(room, pidx){
   const oppBoard = opp.board.map(row=>row.map(u=>({...u, name:u.name, hidden:false})));
   return {
     phase:room.phase, turn:room.turn, you:pidx, winner:room.winner,
-    players:[0,1].map(i=>({faction:room.players[i].faction,base:room.players[i].base,hand:i===pidx?room.players[i].hand:room.players[i].hand.length,deck:room.players[i].deck.length,grave:room.players[i].grave.length,resources:room.players[i].resources.length,readyResources:room.players[i].resources.filter(r=>!r.used).length,usedResources:room.players[i].resources.filter(r=>r.used).length})),
+    players:[0,1].map(i=>({faction:room.players[i].faction,base:room.players[i].base,hand:i===pidx?room.players[i].hand:room.players[i].hand.length,deck:room.players[i].deck.length,grave:[...room.players[i].grave],resources:room.players[i].resources.length,readyResources:room.players[i].resources.filter(r=>!r.used).length,usedResources:room.players[i].resources.filter(r=>r.used).length})),
     board:[maskUnits,oppBoard], facility:p.facility, traps:p.traps.map(t=>t.length),
     hand:[...p.hand],
     log:room.log.slice(-40)
@@ -156,7 +156,7 @@ room.sockets.forEach(ws=>{
 }
 function endTurn(room){
   const p=room.players[room.turn], next=1-room.turn;
-  p.board.flat().forEach(u=>{u.hp=u.maxHp;u.rooted=false;});
+  p.board.flat().forEach(u=>{u.rooted=false;});
   p.resourcePlaced=false;
   if(room.turn===1) room.round++;
   room.turn=next; room.phase="draw"; room.players[next].resourcePlaced=false;
@@ -255,7 +255,8 @@ function action(room,pidx,msg){
       }
 
       p.hand.splice(msg.hand,1);
-
+p.grave.push(name);
+console.log("GRAVE TEST:", p.grave);
       if(c.effects?.includes("draw2")){
         draw(p,2);
 
