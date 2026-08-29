@@ -162,6 +162,26 @@ main{display:grid;grid-template-columns:1fr 330px;gap:12px;padding:12px;max-widt
   cursor:pointer;
 }
 
+#infoModal{
+  position:fixed;
+  inset:0;
+  z-index:100;
+  background:#0009;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+#infoModal.hidden{
+  display:none;
+}
+
+#infoModal .panel{
+  width:min(500px,90%);
+  max-height:80vh;
+  overflow:auto;
+}
+
 .guideClose{
   position:absolute;
   top:8px;
@@ -327,6 +347,18 @@ main{display:grid;grid-template-columns:1fr 330px;gap:12px;padding:12px;max-widt
 <main>
 <section>
 <div id=lobby class=panel>
+<button onclick="showInfo()">📢 INFO</button>
+
+<div id="infoModal" class="hidden">
+  <div class="panel">
+    <h2>📢 WORLDLINE WAR INFO</h2>
+    <p><b>最新アップデート</b></p>
+    <p>・相手の山札枚数を確認できるようになりました</p>
+    <p>・墓地枚数の表示を追加</p>
+    <p>・英雄カードの視認性を向上しました</p>
+    <button onclick="closeInfo()">閉じる</button>
+  </div>
+</div>
 <div class="lobbyLogo">
   <img src="/logo.png" alt="WORLDLINE WAR">
 </div>
@@ -404,10 +436,19 @@ function checkEffects(){
   lastTurn=state.turn;
 }
 const $=id=>document.getElementById(id);
-function connect(){ws=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host);ws.onopen=()=>{$("status").textContent="接続済み"};ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==="trapEffect") showTrapEffect(m.title,m.text);if(m.type==="joined"){me=m.idx;$("lobby").classList.add("hidden");$("game").classList.remove("hidden");$("status").textContent="ルーム "+m.code}else if(m.type==="state"){state=m.state;render()}else if(m.type==="error")alert(m.message)}}
+function connect(){ws=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host);ws.onopen=()=>{$("status").textContent="接続済み"};ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==="trapEffect") showTrapEffect(m.title,m.text);if(m.type==="joined"){me=m.idx;$("lobby").classList.add("hidden");$("game").classList.remove("hidden");$("status").textContent="ルーム "+m.code}else if(m.type==="returnLobby"){
+  state=null;
+  resultShown=false;
+
+  $("resultOverlay").classList.add("hidden");
+  $("game").classList.add("hidden");
+  $("lobby").classList.remove("hidden");
+  $("status").textContent="接続済み";
+}else if(m.type==="state"){state=m.state;render()}else if(m.type==="error")alert(m.message)}}
 function send(o){ws.send(JSON.stringify(o))}
 function createRoom(){send({type:"create",faction:$("faction").value})}
 function joinRoom(){send({type:"join",code:$("code").value,faction:$("faction").value})}
+function leaveMatch(){ send({type:"leaveMatch"}); }
 function showTrapEffect(title,text){
   const overlay=$("effectOverlay");
   $("effectTitle").textContent=title;
@@ -422,7 +463,7 @@ function render(){
  const you=state.players[me], opp=state.players[1-me];
  document.body.classList.toggle("turnMe", state.turn===me); document.body.classList.toggle("turnOpp", state.turn!==me);
  const tb=$("turnBanner"); tb.className="turnBanner "+(state.turn===me?"myTurn":"oppTurn"); tb.textContent=state.turn===me?"🟢 あなたのターン — 行動できます":"🔴 相手のターン — 相手の行動を待っています";
- $("info").innerHTML=`<div class=base>あなた ${you.faction}<br>本拠地 ❤️${you.base}</div><div class=base>相手 ${opp.faction}<br>本拠地 ❤️${opp.base}</div><div class=base>山札 🃏${you.deck}<br>手札 ${Array.isArray(state.hand)?state.hand.length:you.hand}</div><div class=base>${state.turn===me?"🟢 あなたのターン":"🔴 相手のターン"}<br>進軍 ${state.turn===me?"2回まで":"待機中"}</div>`;
+ $("info").innerHTML=`<div class=base>あなた ${you.faction}<br>本拠地 ❤️${you.base}</div><div class=base>相手 ${opp.faction}<br>本拠地 ❤️${opp.base}</div><div class=base>あなたの山札 🃏${you.deck}<br>手札 ${Array.isArray(state.hand)?state.hand.length:you.hand}</div><div class=base>相手の山札 🃏${opp.deck}<br>相手の手札 ${opp.hand}</div><div class=base>${state.turn===me?"🟢 あなたのターン":"🔴 相手のターン"}<br>進軍 ${state.turn===me?"2回まで":"待機中"}</div>`;
 $("info").innerHTML += `<div class="base">🪦 墓地 ${Array.isArray(you.grave)?you.grave.length:you.grave}枚</div>`;
 $("myGraveCount").textContent=you.grave?.length??0;
 $("oppGraveCount").textContent=opp.grave?.length??0;
@@ -518,6 +559,13 @@ function cardCost(name){
 function cancelCardSelection(){
   selectedHand=-1;
   render();
+}
+function showInfo(){
+  $("infoModal").classList.remove("hidden");
+}
+
+function closeInfo(){
+  $("infoModal").classList.add("hidden");
 }
 
 function cardText(n){
@@ -717,7 +765,15 @@ function checkResult(){
 function closeResult(){
   $("resultOverlay").classList.add("hidden");
 }
+
+function rematch(){
+  resultShown = false;
+  $("resultOverlay").classList.add("hidden");
+  send({type:"rematch"});
+}
+
 connect();
+
 </script>
 <div id="effectOverlay" class="hidden">
   <div id="effectBox">
@@ -844,7 +900,8 @@ function showGuide(type){
   <div id="resultBox">
     <div id="resultTitle">🏆 YOU WIN!</div>
     <div id="resultMessage">勝利しました！</div>
-    <button id="resultClose" onclick="closeResult()">閉じる</button>
+<button id="resultRematch" onclick="rematch()">🔄 再戦</button>
+<button id="resultLobby" onclick="leaveMatch()">🏠 ロビーへ戻る</button>
   </div>
 </div>
 </body></html>

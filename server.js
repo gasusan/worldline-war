@@ -357,7 +357,81 @@ console.log("GRAVE TEST:", p.grave);
   checkWin(room);
 }
 
-function createRoom(f){let code="";do{code=Math.random().toString(36).slice(2,7).toUpperCase()}while(rooms.has(code));rooms.set(code,{code,players:[newPlayer(f),null],sockets:[null,null],turn:0,phase:"draw",round:1,moveCount:0,winner:null,log:["ルーム作成。相手を待っています。"]});return code;}
+function createRoom(f){
+  let code="";
+  do{
+    code=Math.random().toString(36).slice(2,7).toUpperCase();
+  }while(rooms.has(code));
+
+  rooms.set(code,{
+    code,
+    players:[newPlayer(f),null],
+    sockets:[null,null],
+    turn:0,
+    phase:"draw",
+    round:1,
+    moveCount:0,
+    winner:null,
+rematch:[false,false],
+    log:["ルーム作成。相手を待っています。"]
+  });
+
+  return code;
+
+function handleRematch(room,pidx){
+  if(!room || !room.players[1]) throw Error("相手がいません");
+  if(room.winner===null) throw Error("まだ試合中です");
+
+  if(!Array.isArray(room.rematch)){
+    room.rematch=[false,false];
+  }
+
+  room.rematch[pidx]=true;
+
+  console.log("🔄 再戦希望:",room.rematch);
+
+  if(!(room.rematch[0] && room.rematch[1])){
+    broadcast(room);
+    return;
+  }
+
+  console.log("✅ 両者再戦OK");
+
+  room.rematch=[false,false];
+
+  startNewGame(room);
+}
+```
+
+function startNewGame(room){
+console.log("🔥 START NEW GAME");
+  const f0=room.players[0].faction;
+  const f1=room.players[1].faction;
+
+  room.players=[
+    newPlayer(f0),
+    newPlayer(f1)
+  ];
+
+  draw(room.players[0],6);
+  draw(room.players[1],6);
+
+  room.turn=Math.random()<0.5?0:1;
+  room.phase="main";
+  room.round=1;
+  room.moveCount=0;
+  room.winner=null;
+
+  room.players[0].resourcePlaced=false;
+  room.players[1].resourcePlaced=false;
+
+  room.log=[
+    "🔄 再戦開始！",
+    `🎲 ${room.turn===0?"プレイヤー1":"プレイヤー2"}が先攻`
+  ];
+
+  broadcast(room);
+}
 function broadcast(room){
   room.sockets.forEach((ws,i)=>{if(ws?.readyState===1)ws.send(JSON.stringify({type:"state",state:publicState(room,i)}));});
 }
@@ -374,6 +448,32 @@ wss.on("connection",ws=>{
       if(m.type==="create"){const code=createRoom(m.faction);const r=rooms.get(code);r.sockets[0]=ws;ws.room=code;ws.idx=0;ws.send(JSON.stringify({type:"joined",code,idx:0}));broadcast(r);}
       else if(m.type==="join"){const r=rooms.get(m.code?.toUpperCase());if(!r||r.players[1])throw Error("ルームが見つからない/満員");r.players[1]=newPlayer(m.faction);r.sockets[1]=ws;ws.room=r.code;ws.idx=1;draw(r.players[0],6);draw(r.players[1],6);r.players[0].resourcePlaced=false;r.players[1].resourcePlaced=false;ws.send(JSON.stringify({type:"joined",code:r.code,idx:1}));broadcast(r);startTurn(r);}
       else if(m.type==="action"){const r=rooms.get(ws.room);action(r,ws.idx,m);if(r.turn===ws.idx&&m.action==="pass"){}broadcast(r);}
+else if(m.type==="leaveMatch"){
+  const r=rooms.get(ws.room);
+
+  if(!r) throw Error("ルームがありません");
+
+  // 自分をロビー状態にする
+  ws.inLobby=true;
+
+  // 相手にもロビーへ戻るよう通知
+  r.sockets.forEach((sock,i)=>{
+    if(sock?.readyState===1){
+      sock.send(JSON.stringify({
+        type:"returnLobby"
+      }));
+    }
+  });
+}
+```
+
+else if(m.type==="rematch"){
+  const r=rooms.get(ws.room);
+
+  if(!r) throw Error("ルームがありません");
+
+  handleRematch(r,ws.idx);
+}
     }catch(e){ws.send(JSON.stringify({type:"error",message:e.message}));}
   });
 });
