@@ -377,6 +377,7 @@ rematch:[false,false],
   });
 
   return code;
+}
 
 function handleRematch(room,pidx){
   if(!room || !room.players[1]) throw Error("相手がいません");
@@ -388,23 +389,23 @@ function handleRematch(room,pidx){
 
   room.rematch[pidx]=true;
 
-  console.log("🔄 再戦希望:",room.rematch);
+  console.log("再戦希望:",room.rematch);
 
   if(!(room.rematch[0] && room.rematch[1])){
     broadcast(room);
     return;
   }
 
-  console.log("✅ 両者再戦OK");
+  console.log("両者再戦OK");
 
   room.rematch=[false,false];
 
   startNewGame(room);
 }
-```
 
 function startNewGame(room){
-console.log("🔥 START NEW GAME");
+  console.log("START NEW GAME");
+
   const f0=room.players[0].faction;
   const f1=room.players[1].faction;
 
@@ -426,8 +427,8 @@ console.log("🔥 START NEW GAME");
   room.players[1].resourcePlaced=false;
 
   room.log=[
-    "🔄 再戦開始！",
-    `🎲 ${room.turn===0?"プレイヤー1":"プレイヤー2"}が先攻`
+    "再戦開始！",
+    `プレイヤー${room.turn+1}が先攻`
   ];
 
   broadcast(room);
@@ -465,7 +466,7 @@ else if(m.type==="leaveMatch"){
     }
   });
 }
-```
+
 
 else if(m.type==="rematch"){
   const r=rooms.get(ws.room);
