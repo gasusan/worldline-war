@@ -338,9 +338,58 @@ main{display:grid;grid-template-columns:1fr 330px;gap:12px;padding:12px;max-widt
 .resultWin #resultTitle{
   color:#ffd43b;
 }
+/* 対戦開始演出 */
+#battleStartOverlay{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  background:rgba(0,0,0,.85);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  pointer-events:none;
+}
+
+#battleStartOverlay.hidden{
+  display:none;
+}
+
+#battleStartBox{
+  text-align:center;
+  color:white;
+  animation:battleStartPop .5s ease-out;
+}
+
+#battleStartTitle{
+  font-size:64px;
+  font-weight:900;
+  margin-bottom:20px;
+}
+
+#battleStartFirst{
+  font-size:32px;
+  font-weight:bold;
+}
+
+@keyframes battleStartPop{
+  from{
+    transform:scale(.5);
+    opacity:0;
+  }
+  to{
+    transform:scale(1);
+    opacity:1;
+  }
+}
 </style>
 </head>
 <body>
+<div id="battleStartOverlay" class="hidden">
+  <div id="battleStartBox">
+    <div id="battleStartTitle">⚔️ 対戦開始！</div>
+    <div id="battleStartFirst"></div>
+  </div>
+</div>
 <div id="effectText"></div>
 
 <header><b>🌍 WORLDLINE WAR</b><span id=status>接続中…</span></header>
@@ -436,6 +485,20 @@ function checkEffects(){
   lastTurn=state.turn;
 }
 const $=id=>document.getElementById(id);
+let battleStarted=false;
+
+function showBattleStart(turn){
+  const overlay=$("battleStartOverlay");
+  const first=$("battleStartFirst");
+
+  first.textContent=`プレイヤー${turn+1}が先攻！`;
+
+  overlay.classList.remove("hidden");
+
+  setTimeout(()=>{
+    overlay.classList.add("hidden");
+  },2500);
+}
 function connect(){ws=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host);ws.onopen=()=>{$("status").textContent="接続済み"};ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==="trapEffect") showTrapEffect(m.title,m.text);if(m.type==="joined"){me=m.idx;$("lobby").classList.add("hidden");$("game").classList.remove("hidden");$("status").textContent="ルーム "+m.code}else if(m.type==="returnLobby"){
   state=null;
   resultShown=false;
@@ -444,7 +507,17 @@ function connect(){ws=new WebSocket((location.protocol==="https:"?"wss://":"ws:/
   $("game").classList.add("hidden");
   $("lobby").classList.remove("hidden");
   $("status").textContent="接続済み";
-}else if(m.type==="state"){state=m.state;render()}else if(m.type==="error")alert(m.message)}}
+}else if(m.type==="state"){
+  state=m.state;
+
+  if(!battleStarted && state.players[1]){
+    battleStarted=true;
+    showBattleStart(state.turn);
+  }
+
+  render();
+}
+else if(m.type==="error")alert(m.message)}}
 function send(o){ws.send(JSON.stringify(o))}
 function createRoom(){send({type:"create",faction:$("faction").value})}
 function joinRoom(){send({type:"join",code:$("code").value,faction:$("faction").value})}

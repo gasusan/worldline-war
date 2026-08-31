@@ -447,7 +447,7 @@ wss.on("connection",ws=>{
     try{
       const m=JSON.parse(raw);
       if(m.type==="create"){const code=createRoom(m.faction);const r=rooms.get(code);r.sockets[0]=ws;ws.room=code;ws.idx=0;ws.send(JSON.stringify({type:"joined",code,idx:0}));broadcast(r);}
-      else if(m.type==="join"){const r=rooms.get(m.code?.toUpperCase());if(!r||r.players[1])throw Error("ルームが見つからない/満員");r.players[1]=newPlayer(m.faction);r.sockets[1]=ws;ws.room=r.code;ws.idx=1;draw(r.players[0],6);draw(r.players[1],6);r.players[0].resourcePlaced=false;r.players[1].resourcePlaced=false;ws.send(JSON.stringify({type:"joined",code:r.code,idx:1}));broadcast(r);startTurn(r);}
+      else if(m.type==="join"){const r=rooms.get(m.code?.toUpperCase());if(!r||r.players[1])throw Error("ルームが見つからない/満員");r.players[1]=newPlayer(m.faction);r.sockets[1]=ws;ws.room=r.code;ws.idx=1;draw(r.players[0],6);draw(r.players[1],6);r.players[0].resourcePlaced=false;r.players[1].resourcePlaced=false;r.turn=Math.random()<0.5?0:1;ws.send(JSON.stringify({type:"joined",code:r.code,idx:1}));broadcast(r);console.log("🎲 初回先攻:", r.turn);startTurn(r);}
       else if(m.type==="action"){const r=rooms.get(ws.room);action(r,ws.idx,m);if(r.turn===ws.idx&&m.action==="pass"){}broadcast(r);}
 else if(m.type==="leaveMatch"){
   const r=rooms.get(ws.room);
